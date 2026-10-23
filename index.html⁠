@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>កម្មវិធីតាមដានការសន្សំប្រាក់ (១ ឆ្នាំ)</title>
+    <script src="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Kantumruy Pro', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-6 md:p-8">
+        <!-- Header -->
+        <div class="text-center mb-6">
+            <h1 class="text-2xl md:text-3xl font-bold text-green-600 mb-2">💰 ផែនការសន្សំប្រាក់ប្រចាំថ្ងៃ</h1>
+            <p class="text-gray-500">គោលដៅសរុប (៣៦៥ ថ្ងៃ)៖ <span id="total-target" class="font-bold text-green-700 text-lg">០ រៀល</span></p>
+        </div>
+
+        <!-- កន្លែងកំណត់ចំនួនទឹកប្រាក់ប្រចាំថ្ងៃ -->
+        <div class="bg-gray-100 p-4 rounded-xl mb-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <label class="text-sm font-semibold text-gray-700">កំណត់ប្រាក់សន្សំក្នុង ១ ថ្ងៃ (៛)៖</label>
+            <div class="flex gap-2 w-full sm:w-auto">
+                <input type="number" id="daily-input" class="border border-gray-300 rounded-lg px-3 py-1.5 w-full sm:w-40 text-center font-bold focus:outline-none focus:border-green-500" placeholder="8500">
+                <button onclick="updateDailyAmount()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition whitespace-nowrap">
+                    យល់ព្រម
+                </button>
+            </div>
+        </div>
+
+        <!-- Progress Summary -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+                <p class="text-sm text-green-600 font-medium">ប្រាក់សន្សំសម្រេចបាន</p>
+                <p id="saved-amount" class="text-xl font-bold text-green-700">០ ៛</p>
+            </div>
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+                <p class="text-sm text-blue-600 font-medium">ចំនួនថ្ងៃបានសន្សំ</p>
+                <p id="saved-days" class="text-xl font-bold text-blue-700">០ / ៣៦៥ ថ្ងៃ</p>
+            </div>
+            <div class="bg-purple-50 border border-purple-200 rounded-xl p-4 text-center">
+                <p class="text-sm text-purple-600 font-medium">ភាគរយសម្រេចបាន</p>
+                <p id="progress-percent" class="text-xl font-bold text-purple-700">០%</p>
+            </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="w-full bg-gray-200 rounded-full h-4 mb-8 overflow-hidden">
+            <div id="progress-bar" class="bg-green-500 h-full transition-all duration-300" style="width: 0%"></div>
+        </div>
+
+        <!-- Days Grid -->
+        <h2 class="text-lg font-bold mb-4 text-gray-700">តារាងធីកតាមដានប្រចាំថ្ងៃ</h2>
+        <div id="days-container" class="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-10 gap-2 max-h-96 overflow-y-auto p-2 border rounded-xl bg-gray-50"></div>
+
+        <!-- Reset Button -->
+        <div class="mt-6 text-right">
+            <button onclick="resetProgress()" class="px-4 py-2 bg-red-100 text-red-600 rounded-lg text-sm font-medium hover:bg-red-200 transition">
+                កំណត់ទិន្នន័យសាថ្មី (Reset)
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const totalDays = 365;
+        // ទាញយកចំនួនទឹកប្រាក់ដែលធ្លាប់បានកំណត់ (តម្លៃដើមគឺ 8500)
+        let dailyAmount = Number(localStorage.getItem('custom_daily_amount')) || 8500;
+        let checkedDays = JSON.parse(localStorage.getItem('savings_checked_days')) || {};
+
+        const container = document.getElementById('days-container');
+        const savedAmountEl = document.getElementById('saved-amount');
+        const savedDaysEl = document.getElementById('saved-days');
+        const progressPercentEl = document.getElementById('progress-percent');
+        const progressBar = document.getElementById('progress-bar');
+        const totalTargetEl = document.getElementById('total-target');
+        const dailyInput = document.getElementById('daily-input');
+
+        dailyInput.value = dailyAmount;
+
+        function updateDailyAmount() {
+            const val = Number(dailyInput.value);
+            if (val > 0) {
+                dailyAmount = val;
+                localStorage.setItem('custom_daily_amount', dailyAmount);
+                updateSummary();
+                alert(`បានកំណត់ចំនួនប្រាក់សន្សំ ${dailyAmount.toLocaleString()}៛ ក្នុង ១ ថ្ងៃ!`);
+            } else {
+                alert("សូមបញ្ចូលចំនួនទឹកប្រាក់ឱ្យបានត្រឹមត្រូវ!");
+            }
+        }
+
+        function renderGrid() {
+            container.innerHTML = '';
+            for (let i = 1; i <= totalDays; i++) {
+                const bgClass = checkedDays[i] ? 'bg-green-500 text-white border-green-500' : 'bg-white text-gray-700 border-gray-300';
+                
+                const box = document.createElement('div');
+                box.className = `flex flex-col items-center justify-center p-2 border rounded-lg cursor-pointer transition select-none ${bgClass}`;
+                box.innerHTML = `
+                    <span class="text-xs opacity-75">ថ្ងៃទី</span>
+                    <span class="font-bold text-sm">${i}</span>
+                `;
+                
+                box.onclick = () => toggleDay(i);
+                container.appendChild(box);
+            }
+            updateSummary();
+        }
+
+        function toggleDay(day) {
+            checkedDays[day] = !checkedDays[day];
+            localStorage.setItem('savings_checked_days', JSON.stringify(checkedDays));
+            renderGrid();
+        }
+
+        function updateSummary() {
+            totalTargetEl.innerText = (totalDays * dailyAmount).toLocaleString() + " រៀល";
+            const checkedCount = Object.values(checkedDays).filter(Boolean).length;
+            const totalSaved = checkedCount * dailyAmount;
+            const percent = ((checkedCount / totalDays) * 100).toFixed(1);
+
+            savedAmountEl.innerText = totalSaved.toLocaleString() + " ៛";
+            savedDaysEl.innerText = `${checkedCount} / ${totalDays} ថ្ងៃ`;
+            progressPercentEl.innerText = `${percent}%`;
+            progressBar.style.width = `${percent}%`;
+        }
+
+        function resetProgress() {
+            if (confirm("តើអ្នកពិតជាចង់លុបទិន្នន័យសន្សំទាំងអស់នេះមែនទេ?")) {
+                checkedDays = {};
+                localStorage.removeItem('savings_checked_days');
+                renderGrid();
+            }
+        }
+
+        renderGrid();
+    </script>
+</body>
+</html>
